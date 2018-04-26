@@ -19,26 +19,20 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     
-
-  other-modules:                            
+  other-modules:       System.MQ.Websocket.Atomic.Types
+                     , System.MQ.Websocket
                 
   build-depends:       base >= 4.7 && < 5
+                     , clock
+                     , containers
                      , mq
                      , mq-component-hs
                      , mtl
+                     , stm
                      , text
+                     , websockets
   ghc-options:         -Wall -O2
   default-language:    Haskell2010
-  
--- executable simple-speaker
---   hs-source-dirs:      app
---   main-is:             SimpleSpeaker.hs
---   build-depends:       base
---                      , aeson
---                      , mq
---                      , mq-component-hs
---   default-language:    Haskell2010
---   ghc-options:         -threaded -rtsopts -with-rtsopts=-N -Wall -O2
 
 source-repository head
   type:     git
