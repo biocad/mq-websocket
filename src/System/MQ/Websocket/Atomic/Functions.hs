@@ -13,6 +13,7 @@ module System.MQ.Websocket.Atomic.Functions
   , allConnections
   , allConnectionsM
   , sharedClients
+  , sharedSpecs
   ) where
 
 import           Control.Concurrent.STM.TVar      (TVar, modifyTVar', newTVarIO,
@@ -27,8 +28,8 @@ import           System.Clock                     (Clock (..), getTime,
                                                    toNanoSecs)
 import           System.IO.Unsafe                 (unsafePerformIO)
 import           System.MQ.Websocket.Atomic.Types (ClientConnection, ClientId,
-                                                   Clients, Spec, Timestamp,
-                                                   WSConnection (..))
+                                                   Clients, Spec, Specs,
+                                                   Timestamp, WSConnection (..))
 
 -- | Shared between FromWS and FromMQ processes memory pointer with all connected clients and specs they have requested.
 -- unsafePerformIO is adviced here by the authors of Control.Concurrent
@@ -36,6 +37,11 @@ import           System.MQ.Websocket.Atomic.Types (ClientConnection, ClientId,
 sharedClients :: TVar Clients
 sharedClients = unsafePerformIO . newTVarIO $ empty
 
+
+-- | Shared between FromWS and FromMQ processes memory pointer with Map from Spec to clients which want to listen them.
+--
+sharedSpecs :: TVar Specs
+sharedSpecs = unsafePerformIO . newTVarIO $ empty
 
 -- | Pack a WebSocket connection into a wrapper which is Eq and Ord instance
 -- and stores for each connection all specs that the client has requested.

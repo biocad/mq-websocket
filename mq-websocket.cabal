@@ -22,11 +22,17 @@ library
   other-modules:       System.MQ.Websocket
                      , System.MQ.Websocket.Atomic.Types
                      , System.MQ.Websocket.Atomic.Functions
+                     , System.MQ.Websocket.FromWS
                      
                 
   build-depends:       base >= 4.7 && < 5
+                     , aeson-picker
+                     , bytestring
+                     , cookie
                      , clock
                      , containers
+                     , data-msgpack
+                     , data-msgpack-types
                      , mq
                      , mq-component-hs
                      , mtl
