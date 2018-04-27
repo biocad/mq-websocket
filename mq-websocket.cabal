@@ -19,8 +19,10 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     
-  other-modules:       System.MQ.Websocket.Atomic.Types
-                     , System.MQ.Websocket
+  other-modules:       System.MQ.Websocket
+                     , System.MQ.Websocket.Atomic.Types
+                     , System.MQ.Websocket.Atomic.Functions
+                     
                 
   build-depends:       base >= 4.7 && < 5
                      , clock
