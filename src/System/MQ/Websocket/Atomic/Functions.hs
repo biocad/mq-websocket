@@ -2,15 +2,10 @@ module System.MQ.Websocket.Atomic.Functions
   (
     packConnection
   , packConnectionWithSpec
-  , clientsCount
   , clientsCountM
-  , clientExists
   , clientExistsM
-  , addConnection
   , addConnectionM
-  , removeConnection
   , removeConnectionM
-  , allConnections
   , allConnectionsM
   , sharedClients
   , sharedSpecs
@@ -20,7 +15,7 @@ import           Control.Concurrent.STM.TVar      (TVar, modifyTVar', newTVarIO,
                                                    readTVarIO)
 import           Control.Monad.IO.Class           (MonadIO (..))
 import           Control.Monad.STM                (atomically)
-import           Data.List                        (union, (\\))
+import           Data.List                        (union)
 import           Data.Map.Strict                  (empty, insertWith, member,
                                                    size, toList, update)
 import qualified Network.WebSockets               as WS
@@ -30,6 +25,7 @@ import           System.IO.Unsafe                 (unsafePerformIO)
 import           System.MQ.Websocket.Atomic.Types (ClientConnection, ClientId,
                                                    Clients, Spec, Specs,
                                                    Timestamp, WSConnection (..))
+
 
 -- | Shared between FromWS and FromMQ processes memory pointer with all connected clients and specs they have requested.
 -- unsafePerformIO is adviced here by the authors of Control.Concurrent
@@ -43,6 +39,7 @@ sharedClients = unsafePerformIO . newTVarIO $ empty
 sharedSpecs :: TVar Specs
 sharedSpecs = unsafePerformIO . newTVarIO $ empty
 
+
 -- | Pack a WebSocket connection into a wrapper which is Eq and Ord instance
 -- and stores for each connection all specs that the client has requested.
 --
@@ -51,6 +48,7 @@ packConnection connection = packConnectionWithSpec connection []
 
 packConnectionWithSpec :: MonadIO m => WS.Connection -> [Spec] -> m WSConnection
 packConnectionWithSpec connection specs = WSConnection <$> getTimeNano <*> pure connection <*> pure specs
+
 
 -- | Pure and lifted versions of clients count check.
 -- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
@@ -73,24 +71,50 @@ clientExistsM clientId = liftIO $ clientExists clientId <$> readTVarIO sharedCli
 
 
 -- | Pure and lifted versions of connection addition.
--- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
+-- Adds connection both to @sgaredClienys@ and @sharedSpecs@.
+-- Lifted version uses shared `TVar` pointers to obtain all connected clients and their spec lists.
 --
 addConnection :: ClientConnection -> Clients -> Clients
 addConnection (clientId, connection) = insertWith union clientId [connection]
 
+addSpec :: ClientConnection -> Specs -> Specs
+addSpec clientConn@(_, connection) oldSpecs = foldl foldFunc oldSpecs acceptedSpecs
+  where
+    foldFunc :: Specs -> Spec -> Specs
+    foldFunc specMap spec = insertWith union spec [clientConn] specMap
+
+    acceptedSpecs :: [Spec]
+    acceptedSpecs | null (wsAcceptedSpec connection) = ["*"]
+                  | otherwise = wsAcceptedSpec connection
+
 addConnectionM :: MonadIO m => ClientConnection -> m ()
-addConnectionM = liftIO . atomically . modifyTVar' sharedClients . addConnection
+addConnectionM clientConn = liftIO . atomically $ do
+  _ <- modifyTVar' sharedClients . addConnection $ clientConn
+  _ <- modifyTVar' sharedSpecs . addSpec $ clientConn
+  pure ()
 
 
 -- | Pure and lifted versions of connection removal.
--- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
+-- Removes connection both from @sharedClients@ and @sharedSpecs@
+-- Lifted version uses shared `TVar` pointers to obtain all connected clients and their spec lists.
 --
 removeConnection :: ClientConnection -> Clients -> Clients
-removeConnection (userId, connection) = update searchAndRemove userId
-  where searchAndRemove connections = Just $ connections \\ [connection]
+removeConnection (clientId, connection) = update searchAndRemove clientId
+  where
+    searchAndRemove :: [WSConnection] -> Maybe [WSConnection]
+    searchAndRemove connections = Just $ filter (/= connection) connections
+
+removeSpec :: ClientConnection -> Specs -> Specs
+removeSpec clientConn = fmap searchAndRemove
+  where
+    searchAndRemove :: [ClientConnection] -> [ClientConnection]
+    searchAndRemove = filter (/= clientConn)
 
 removeConnectionM :: MonadIO m => ClientConnection -> m ()
-removeConnectionM = liftIO . atomically . modifyTVar' sharedClients . removeConnection
+removeConnectionM clientConn = liftIO . atomically $ do
+  _ <- modifyTVar' sharedClients . removeConnection $ clientConn
+  _ <- modifyTVar' sharedSpecs . removeSpec $ clientConn
+  pure ()
 
 
 -- | Pure and lifted versions of obtaining all WebSocket connections.

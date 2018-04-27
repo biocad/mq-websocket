@@ -31,7 +31,7 @@ type ClientConnection = (ClientId, WSConnection)
 
 type Clients = Map ClientId [WSConnection]
 
-type Specs = Map Spec ClientConnection
+type Specs = Map Spec [ClientConnection]
 
 -- | WebSocket connection wrapper type.
 -- Creation time is used as an identifier which helps to distinguish connections.
