@@ -35,7 +35,7 @@ type Specs = Map Spec [ClientConnection]
 
 -- | WebSocket connection wrapper type.
 -- Creation time is used as an identifier which helps to distinguish connections.
-data WSConnection = WSConnection { wsTime         :: Int           -- ^ Connection creation time. Acts as identifier.
+data WSConnection = WSConnection { wsTime         :: Timestamp     -- ^ Connection creation time. Acts as identifier.
                                  , wsConnection   :: WS.Connection -- ^ Connection itself
                                  , wsAcceptedSpec :: [Spec]        -- ^ Specs which creator of the connection accepts.
                                  }
@@ -67,4 +67,4 @@ instance MessagePack WSMessage where
 infix .!
 (.!) :: (Monad m, MessagePack b) => Map ByteString Object -> ByteString -> m b
 dict .! key | key `member` dict = fromObject $ dict ! key
-  | otherwise = error $ "System.MQ.WebSocket.Atomic.Types: .! :: key " ++ show key ++ " is not an element of the dictionary."
+            | otherwise = error $ "System.MQ.WebSocket.Atomic.Types: .! :: key " ++ show key ++ " is not an element of the dictionary."

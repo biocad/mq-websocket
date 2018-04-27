@@ -89,9 +89,9 @@ addSpec clientConn@(_, connection) oldSpecs = foldl foldFunc oldSpecs acceptedSp
 
 addConnectionM :: MonadIO m => ClientConnection -> m ()
 addConnectionM clientConn = liftIO . atomically $ do
-  _ <- modifyTVar' sharedClients . addConnection $ clientConn
-  _ <- modifyTVar' sharedSpecs . addSpec $ clientConn
-  pure ()
+    _ <- modifyTVar' sharedClients . addConnection $ clientConn
+    _ <- modifyTVar' sharedSpecs   . addSpec       $ clientConn
+    pure ()
 
 
 -- | Pure and lifted versions of connection removal.
@@ -112,9 +112,9 @@ removeSpec clientConn = fmap searchAndRemove
 
 removeConnectionM :: MonadIO m => ClientConnection -> m ()
 removeConnectionM clientConn = liftIO . atomically $ do
-  _ <- modifyTVar' sharedClients . removeConnection $ clientConn
-  _ <- modifyTVar' sharedSpecs . removeSpec $ clientConn
-  pure ()
+    _ <- modifyTVar' sharedClients . removeConnection $ clientConn
+    _ <- modifyTVar' sharedSpecs   . removeSpec       $ clientConn
+    pure ()
 
 
 -- | Pure and lifted versions of obtaining all WebSocket connections.

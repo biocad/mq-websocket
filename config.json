@@ -2,7 +2,7 @@
   "build":{
     "deps":[]
   },
-    "deploy":{
+  "deploy":{
         "monique":{
           "scheduler-in" : {
               "host": "127.0.0.1",
@@ -15,25 +15,12 @@
               "techport": 9025
           }
         }
-    },
-    "params":{
-        "simple-speaker": {
-            "creator": "0000-0000-0000-speaker",
-            "logfile": "/tmp/simple-speaker.log",
-            "frequency": 60000,
-            "controller": {
-                "host": "",
-                "port": ""
-            }
-        },
-        "simple-listener": {
-            "creator": "0000-0000-0000-listener",
-            "logfile": "/tmp/simple-listener.log",
-            "frequency": 60000,
-            "controller": {
-                "host": "",
-                "port": ""
-            }
+  },
+  "params":{
+        "websocket": {
+            "logfile": "/tmp/websocket.log",
+            "host": "127.0.0.1",
+            "port": 9160
         }
-    }
+  }
 }
