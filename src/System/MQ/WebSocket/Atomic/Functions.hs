@@ -1,4 +1,4 @@
-module System.MQ.Websocket.Atomic.Functions
+module System.MQ.WebSocket.Atomic.Functions
   (
     packConnection
   , packConnectionWithSpec
@@ -22,7 +22,7 @@ import qualified Network.WebSockets               as WS
 import           System.Clock                     (Clock (..), getTime,
                                                    toNanoSecs)
 import           System.IO.Unsafe                 (unsafePerformIO)
-import           System.MQ.Websocket.Atomic.Types (ClientConnection, ClientId,
+import           System.MQ.WebSocket.Atomic.Types (ClientConnection, ClientId,
                                                    Clients, Spec, Specs,
                                                    Timestamp, WSConnection (..))
 

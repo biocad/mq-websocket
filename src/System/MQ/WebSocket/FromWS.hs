@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module System.MQ.Websocket.FromWS
+module System.MQ.WebSocket.FromWS
   (
     listenWebSocket
   ) where
@@ -18,10 +18,10 @@ import           System.MQ.Component                  (TwoChannels (..),
                                                        load2Channels)
 import           System.MQ.Monad                      (runMQMonad)
 import           System.MQ.Transport.ByteString       (push)
-import           System.MQ.Websocket.Atomic.Functions (addConnectionM,
+import           System.MQ.WebSocket.Atomic.Functions (addConnectionM,
                                                        packConnectionWithSpec,
                                                        removeConnectionM)
-import           System.MQ.Websocket.Atomic.Types     (ClientId, Spec,
+import           System.MQ.WebSocket.Atomic.Types     (ClientId, Spec,
                                                        WSMessage (..))
 import           Web.Cookie                           (parseCookiesText)
 

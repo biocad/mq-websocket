@@ -19,10 +19,11 @@ cabal-version:       >=1.10
 library
   hs-source-dirs:      src
   exposed-modules:     
-  other-modules:       System.MQ.Websocket
-                     , System.MQ.Websocket.Atomic.Types
-                     , System.MQ.Websocket.Atomic.Functions
-                     , System.MQ.Websocket.FromWS
+  other-modules:       System.MQ.WebSocket
+                     , System.MQ.WebSocket.Atomic.Types
+                     , System.MQ.WebSocket.Atomic.Functions
+                     , System.MQ.WebSocket.FromMQ
+                     , System.MQ.WebSocket.FromWS
                      
                 
   build-depends:       base >= 4.7 && < 5

@@ -1,7 +1,7 @@
 {-# LANGUAGE OverloadedStrings #-}
 {-# LANGUAGE RecordWildCards   #-}
 
-module System.MQ.Websocket.Atomic.Types
+module System.MQ.WebSocket.Atomic.Types
   (
     ClientId
   , Spec
@@ -67,4 +67,4 @@ instance MessagePack WSMessage where
 infix .!
 (.!) :: (Monad m, MessagePack b) => Map ByteString Object -> ByteString -> m b
 dict .! key | key `member` dict = fromObject $ dict ! key
-  | otherwise = error $ "System.MQ.Websocket.Atomic.Types: .! :: key " ++ show key ++ " is not an element of the dictionary."
+  | otherwise = error $ "System.MQ.WebSocket.Atomic.Types: .! :: key " ++ show key ++ " is not an element of the dictionary."
