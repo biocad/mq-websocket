@@ -81,5 +81,6 @@ clientIdFromCookies pending = do
     let headers = WS.requestHeaders . WS.pendingRequest $ pending
     (_, cookiesText) <- find ((== "Cookie") . fst) headers
     lookup "id" $ parseCookiesText cookiesText
+-- clientIdFromCookies pending = Just "abracadabra"
 
 

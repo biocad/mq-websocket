@@ -20,6 +20,7 @@
         "mq_websocket": {
             "logfile": "/tmp/websocket.log",
             "host": "127.0.0.1",
+            "frequency": 60000,
             "port": 9160
         }
   }
