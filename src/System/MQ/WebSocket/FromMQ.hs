@@ -32,7 +32,7 @@ listenMonique :: IO ()
 listenMonique = runMQMonad $ do
     TwoChannels{..} <- load2Channels
 
-    foreverSafe "mq-websocket" $ do
+    foreverSafe "mq_websocket" $ do
         tm@(tag, _) <- sub fromScheduler
         let spec = BSC8.unpack $ messageSpec tag
 

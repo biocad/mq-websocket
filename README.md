@@ -23,3 +23,7 @@ All other messages should be packed in MessagePack representation of a dictionar
   * `message` : a ByteString message.
 
 Client will receive message in this representation too.
+
+## Ping
+
+We have implemented a hardcode ping alongside the one from WebSocket so that the connections __really__ stays alive. User may send a `"ping"` ByteString and should receive `"pong"` in response.

@@ -11,10 +11,13 @@ module System.MQ.WebSocket.Atomic.Types
   , WSMessage (..)
   , Timestamp
   , Specs
+  , pingMessage
+  , pongMessage
   ) where
 
 import           Control.Monad                 ((>=>))
 import           Data.ByteString               (ByteString)
+import qualified Data.ByteString.Lazy          as BSL (ByteString)
 import           Data.Map.Strict               (Map, fromList, member, (!))
 import           Data.MessagePack.Types.Class  (MessagePack (..))
 import           Data.MessagePack.Types.Object (Object)
@@ -22,6 +25,12 @@ import           Data.Text                     (Text)
 import qualified Network.WebSockets            as WS
 import           System.MQ.Protocol            (Dictionary (..), MessageTag,
                                                 Spec)
+
+pingMessage :: BSL.ByteString
+pingMessage = "ping"
+
+pongMessage :: BSL.ByteString
+pongMessage = "pong"
 
 type ClientId = Text
 

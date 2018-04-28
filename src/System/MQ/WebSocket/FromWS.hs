@@ -11,7 +11,7 @@ import           Control.Monad.IO.Class               (liftIO)
 import           Data.Aeson.Picker                    ((|--))
 import qualified Data.ByteString.Lazy                 as BSL (ByteString)
 import           Data.List                            (find)
-import           Data.MessagePack                     (unpack)
+import           Data.MessagePack                     (pack, unpack)
 import           Data.Text                            (Text)
 import qualified Network.WebSockets                   as WS
 import           System.MQ.Component                  (TwoChannels (..),
@@ -23,7 +23,8 @@ import           System.MQ.WebSocket.Atomic.Functions (addConnectionM,
                                                        packConnectionWithSpec,
                                                        removeConnectionM)
 import           System.MQ.WebSocket.Atomic.Types     (ClientId, Spec,
-                                                       WSMessage (..))
+                                                       WSMessage (..),
+                                                       pingMessage, pongMessage)
 import           Web.Cookie                           (parseCookiesText)
 
 -- | WebSocket listener function.
@@ -63,10 +64,15 @@ rejectConnection pending = WS.rejectRequest pending "User id not found in cookie
 dispatchClientMessage :: WS.Connection -> IO ()
 dispatchClientMessage connection = runMQMonad $ do
     TwoChannels{..} <- load2Channels
-    foreverSafe "websocket" $ do
+    foreverSafe "mq_websocket" $ do
         packedMessage <- liftIO $ WS.receiveData connection :: MQMonad BSL.ByteString
-        message <- unpack packedMessage
-        push toScheduler (wsTag message, wsMessage message)
+        let maybePing = unpack packedMessage :: Maybe BSL.ByteString
+
+        if maybePing == Just pingMessage
+           then liftIO $ WS.sendBinaryData connection (pack pongMessage)
+        else do
+          message <- unpack packedMessage
+          push toScheduler (wsTag message, wsMessage message)
 
 -- | Try to restore client id from cookies.
 --
