@@ -9,7 +9,6 @@ module System.MQ.WebSocket.FromMQ
 import           Control.Concurrent.STM.TVar          (readTVarIO)
 import           Control.Monad.Except                 (liftIO)
 import qualified Data.ByteString                      as BS (ByteString)
-import qualified Data.ByteString.Char8                as BSC8 (unpack)
 import           Data.Map.Strict                      ((!?))
 import           Data.Maybe                           (fromMaybe)
 import           Data.MessagePack                     (pack)
@@ -34,7 +33,7 @@ listenMonique = runMQMonad $ do
 
     foreverSafe "mq_websocket" $ do
         tm@(tag, _) <- sub fromScheduler
-        let spec = BSC8.unpack $ messageSpec tag
+        let spec = messageSpec tag
 
         specs       <- liftIO $ readTVarIO sharedSpecs
         connections <- pure $ (++) (getConnections specs spec) (getConnections specs "*")

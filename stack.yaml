@@ -10,8 +10,6 @@ package-indices:
 
 packages:
 - '.'
-- '../mq-component-hs'
-- '../mq'
 
 extra-deps:
 

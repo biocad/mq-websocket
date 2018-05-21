@@ -74,6 +74,6 @@ instance MessagePack WSMessage where
   fromObject = fromObject >=> fromDictionary
 
 infix .!
-(.!) :: (Monad m, MessagePack b) => Map ByteString Object -> ByteString -> m b
+(.!) :: (Monad m, MessagePack b) => Map Text Object -> Text -> m b
 dict .! key | key `member` dict = fromObject $ dict ! key
             | otherwise = error $ "System.MQ.WebSocket.Atomic.Types: .! :: key " ++ show key ++ " is not an element of the dictionary."
