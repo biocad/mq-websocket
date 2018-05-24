@@ -1,37 +1,137 @@
 # mq-websocket
 
-## Contracts
+Данный модуль предоставляет возможность различным приложениям и сервисам общаться с компонентами системы MoniQue посредством websocket.
+Такие приложения и сервисы в данном документе будут называться **клиентами**.
 
-**Remark.** 
-All the messages described below are considered to be ByteStrings.
+Данный модуль является компонентом MoniQue, который реализует следующую логику:
+  1. принимает сообщение из websocket-каналов и отправляет их в ["одно место" (Scheduler)](https://github.com/biocad/mq/blob/master/doc/Scheduler.md);
+  2. принимает сообщение из "одного места" и отправляет его в те websocket-каналы, которые в нём были заинтересованы.
 
-The first message from the WebSocket client after establishing the connection must me a JSON with the single field `specs` containing all `spec` which he wants to listen. If the client wants to receive all specs, the field should be left empty. Example:
+Прежде всего, опишем правила, по которым клиент общается с данным компонентом.
+  
+## Протокол общения
 
-```JSON
+Протокол общения построен поверх протокола MoniQue, который описан [тут](https://github.com/biocad/mq/blob/master/doc/Protocol.md).
+Дополнением к этому служат служебные сообщения, которые предназначены для корректной работы websocket-каналов.
+
+### ping & pong 
+
+Служебное сообщение с текстом `ping` отсылается клиентом данному компоненту.
+В ответ компонент отошлёт сообщение с текстом `pong`.
+Данная пара предназначена для дополнительного поддержания коннекции между клиентом и компонентом.
+
+### Инициирующее сообщение
+
+Данное служебное сообщение отправляется сразу после открытия коннекции **до** отправления всех остальных сообщений.
+Оно отсылается в формате JSON и имеет следующий вид:
+
+```
 {
-  "specs" : ["example_speaker", "ss_worker_ab_fold"]
+    "specs": ["example_calculator", "ss_ab-fold"]
 }
 ```
 
-or 
+В поле `specs` перечисляются те `spec` сообщений (см. протокол), на которые "подписывается" клиент.
+То есть при получении от одного места сообщения с полем `spec`, который был указан клиентом в "инициирующем сообщении", оно будет отослано с коннекцию, а иначе - проигнорировано.
 
-```JSON
-{
-  "specs" : []
+Если при инициализации был передан пустой список, то в данную коннекцию будут посылаться **все** сообщения.
+
+### MoniQue сообщение
+
+Все остальные сообщения не являются служебными и должны быть сформированы определённым способом.
+
+Напомним, что согласно протоколу MoniQue для любого сообщения (`message`) можно сформировать тэг (`tag`).
+Форматом для передаваемых сообщений является MessagePack.
+Сообщения должны быть упакованы в словарь MessagePack со следующими полями:
+
+```
+{ 
+  tag     :: bin,
+  message :: bin
 }
 ```
 
-All other messages should be packed in MessagePack representation of a dictionary with two keys:
-  * `tag` : a ByteString message tag.
-  * `message` : a ByteString message.
+где поля имеют значат следующее:
+  * `tag` - сформированный про [правилам](https://github.com/biocad/mq/blob/master/doc/Protocol.md#%D0%97%D0%B0%D0%B3%D0%BE%D0%BB%D0%BE%D0%B2%D0%BE%D0%BA-%D1%81%D0%BE%D0%BE%D0%B1%D1%89%D0%B5%D0%BD%D0%B8%D1%8F) тэг сообщения, записанный в бинарном виде;
+  * `message` - тело самого сообщения, которое будет отправлено вместе с тэгом в "одно место".
+  
+Надо обратить внимание на то, что поле `message` должно содержать сообщение в таком виде, что его можно без дополнительного преобразования отправить в "одно место". Это значит, что сообщение к этому моменту должно быть преобразовано в MessagePack.
+А в случае необходимости и возможности шифрования, то и зашифровано.
 
-Client will receive message in this representation too.
+Для большей ясности разберём пример.
 
-## Ping
+Пусть мы хотим отправить по websocket следующее сообщение:
 
-We have implemented a hardcode ping alongside the one from WebSocket so that the connections __really__ stays alive. User may send a `"ping"` ByteString and should receive `"pong"` in response.
-Both ping and pong messages are packed in MessagePack ByteStrings. So we do expect the following binary representations of these messages:
-  * `ping` : `\xc4\x04ping`
-  * `pong` : `\xc4\x04pong`
+```
+{ id = "lLeSRsBqQU7cj+rnbNaE59g+dU0=", 
+  pid = "", 
+  creator = "0000-0000-0000-0000000000", 
+  created_at = 1526996657921, 
+  expires_at = 0, 
+  spec = "example_calculator", 
+  encoding = "JSON", 
+  type = config, 
+  data = "{\"first\":1,\"second\":2,\"action\":\"+\"}"
+}
+```
 
-Here \xAA is sybol with hexadecimal number AA in the ASCII table.
+Тогда тэг для данного сообщения будет иметь вид
+
+```
+config:example_calculator:lLeSRsBqQU7cj+rnbNaE59g+dU0=::0000-0000-0000-0000000000
+```
+
+Если сообщение закодировать в MessagePack, то оно будет иметь вид
+
+```
+\137\170created_at\207\NUL\NUL\SOHc\136\ETB\231\SOH\167creator\185\&0000-0000-0000-0000000000\164data\196#{\"first\":1,\"second\":2,\"action\":\"+\"}\168encoding\164JSON\170expires_at\NUL\162id\196\FSlLeSRsBqQU7cj+rnbNaE59g+dU0=\163pid\196\NUL\164spec\178example_calculator\164type\166config
+```
+
+А в виде hex-массива строчка выше преобразуется в следующую последовательность:
+
+```
+89 aa 63 72 65 61 74 65 64 5f 61 74 cf 0 0 1 63 88 17 e7 1 a7 63 72 65 61 74 6f 72 b9 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 30 30 30 30 30 30 a4 64 61 74 61 c4 23 7b 22 66 69 72 73 74 22 3a 31 2c 22 73 65 63 6f 6e 64 22 3a 32 2c 22 61 63 74 69 6f 6e 22 3a 22 2b 22 7d a8 65 6e 63 6f 64 69 6e 67 a4 4a 53 4f 4e aa 65 78 70 69 72 65 73 5f 61 74 0 a2 69 64 c4 1c 6c 4c 65 53 52 73 42 71 51 55 37 63 6a 2b 72 6e 62 4e 61 45 35 39 67 2b 64 55 30 3d a3 70 69 64 c4 0 a4 73 70 65 63 b2 65 78 61 6d 70 6c 65 5f 63 61 6c 63 75 6c 61 74 6f 72 a4 74 79 70 65 a6 63 6f 6e 66 69 67
+```
+
+Сообщение, готовое для отправки в websocket, будет иметь вид
+
+```
+{ tag = "config:example_calculator:lLeSRsBqQU7cj+rnbNaE59g+dU0=::0000-0000-0000-0000000000", 
+  message = "\137\170created_at\207\NUL\NUL\SOHc\136\ETB\231\SOH\167creator\185\&0000-0000-0000-0000000000\164data\196#{\"first\":1,\"second\":2,\"action\":\"+\"}\168encoding\164JSON\170expires_at\NUL\162id\196\FSlLeSRsBqQU7cj+rnbNaE59g+dU0=\163pid\196\NUL\164spec\178example_calculator\164type\166config"
+}
+```
+
+В виде hex-массива оно будет иметь вид
+
+```
+82 a7 6d 65 73 73 61 67 65 c4 c6 89 aa 63 72 65 61 74 65 64 5f 61 74 cf 0 0 1 63 88 17 e7 1 a7 63 72 65 61 74 6f 72 b9 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 30 30 30 30 30 30 a4 64 61 74 61 c4 23 7b 22 66 69 72 73 74 22 3a 31 2c 22 73 65 63 6f 6e 64 22 3a 32 2c 22 61 63 74 69 6f 6e 22 3a 22 2b 22 7d a8 65 6e 63 6f 64 69 6e 67 a4 4a 53 4f 4e aa 65 78 70 69 72 65 73 5f 61 74 0 a2 69 64 c4 1c 6c 4c 65 53 52 73 42 71 51 55 37 63 6a 2b 72 6e 62 4e 61 45 35 39 67 2b 64 55 30 3d a3 70 69 64 c4 0 a4 73 70 65 63 b2 65 78 61 6d 70 6c 65 5f 63 61 6c 63 75 6c 61 74 6f 72 a4 74 79 70 65 a6 63 6f 6e 66 69 67 a3 74 61 67 c4 51 63 6f 6e 66 69 67 3a 65 78 61 6d 70 6c 65 5f 63 61 6c 63 75 6c 61 74 6f 72 3a 6c 4c 65 53 52 73 42 71 51 55 37 63 6a 2b 72 6e 62 4e 61 45 35 39 67 2b 64 55 30 3d 3a 3a 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 2d 30 30 30 30 30 30 30 30 30 30
+```
+
+Примеры выше можно проверить с помощью вот [этого](https://kawanet.github.io/msgpack-lite/) online-декодера для MessagePack.
+
+
+## config.json
+
+Помимо [стандартных полей](https://github.com/biocad/mq/blob/master/doc/ConfigJson.md) MoniQue-компонента в разделе "deploy -> monique -> websocket" указываются следующие поля:
+  * `host` - хост, который будет слушать компонент для канала websocket;
+  * `port` - порт, который будет слушать компонент для канала websocket.
+  
+## Сборка и запуск
+
+Сборка данной библиотеки осуществляется из внутренней сети компании BIOCAD (до того момента, как данный компонент будет переведён в hackage) с помощью инструмента [stack](https://www.haskellstack.org/):
+
+```
+stack build
+```
+
+Запуск компонента осуществляется командой
+
+```
+stack exec mq-websocket
+```
+
+Для тестирования данного модуля можно запустить тестовое приложение (предварительно перед этим подняв пример с [калькулятором](https://github.com/biocad/mq-component-hs#%D0%9F%D1%80%D0%B8%D0%BC%D0%B5%D1%80-%D0%BA%D0%B0%D0%BB%D1%8C%D0%BA%D1%83%D0%BB%D1%8F%D1%82%D0%BE%D1%80)):
+
+```
+stack exec tester
+```

@@ -6,6 +6,11 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.1.0] - 2018-05-23
+### Changed
+- Protocol for websocket
+- Documentation
+
 ## [0.1.0.1] - 2018-05-21
 ### Changed
 - New errors in MoniQue

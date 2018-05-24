@@ -1,59 +1,108 @@
+{-# LANGUAGE DeriveGeneric     #-}
 {-# LANGUAGE OverloadedStrings #-}
 
 module Main where
 
-import           Control.Monad        (forever)
-import           Data.Aeson.Picker    ((|--))
-import qualified Data.ByteString      as BS
-import           Data.ByteString.Lazy (toStrict)
-import qualified Data.MessagePack     as MP (pack)
-import           Data.String          (IsString (..))
-import           Network.Socket       (withSocketsDo)
-import qualified Network.WebSockets   as WS
-import           System.BCD.Config    (getConfigText)
-import           System.MQ.Monad      (runMQMonad)
-import           System.MQ.Protocol   (MessageLike (..), MessageType (..),
-                                       Props (..), createMessage, messageTag,
-                                       notExpires)
-import           System.MQ.WebSocket  (WSMessage (..))
+import           Control.Concurrent             (forkIO)
+import           Control.Monad                  (forever)
+import           Data.Aeson                     (FromJSON (..), ToJSON (..))
+import           Data.Aeson.Picker              ((|--))
+import qualified Data.ByteString                as BS
+import           Data.CaseInsensitive           (CI (..))
+import           GHC.Generics                   (Generic)
+import           Network.Socket                 (withSocketsDo)
+import qualified Network.WebSockets             as WS
+import           Numeric                        (showHex)
+import           System.BCD.Config              (getConfigText)
+import qualified System.MQ.Encoding.JSON        as JSON (pack, unpack)
+import qualified System.MQ.Encoding.MessagePack as MP (pack, unpack)
+import           System.MQ.Monad                (runMQMonad)
+import           System.MQ.Protocol             (MessageLike (..),
+                                                 MessageType (..), Props (..),
+                                                 createMessage, emptyHash,
+                                                 jsonEncoding, messageTag,
+                                                 notExpires)
+import           System.MQ.WebSocket            (ConnectionSetup (..),
+                                                 WSMessage (..))
 
-newtype TesterData = TesterData { testerData :: BS.ByteString
-                                }
+-- | 'CalculatorConfig' represents configuration data for calculator.
+--
+data CalculatorConfig = CalculatorConfig { first  :: Float
+                                         , second :: Float
+                                         , action :: String
+                                         }
+  deriving (Show, Generic)
 
-testerProps :: Props TesterData
-testerProps = Props "mq_websocket_tester" Config "JSON"
-
-instance MessageLike TesterData where
-  props  = testerProps
-  pack   = testerData
-  unpack = Just . TesterData
-
+instance ToJSON CalculatorConfig
+instance FromJSON CalculatorConfig
+instance MessageLike CalculatorConfig where
+  props = Props "example_calculator" Config jsonEncoding
+  pack = JSON.pack
+  unpack = JSON.unpack
 
 main :: IO ()
 main = do
     config <- getConfigText
-    let host = config |-- ["params", "mq_websocket", "host"] :: String
-    let port = config |-- ["params", "mq_websocket", "port"] :: Int
+    let host = config |-- ["deploy", "monique", "websocket", "host"] :: String
+    let port = config |-- ["deploy", "monique", "websocket", "port"] :: Int
 
-    withSocketsDo $ WS.runClient host port "/" listener
-    putStrLn "listener started."
-    withSocketsDo $ WS.runClient host port "/" speaker
-    putStrLn "speaker started."
+    withSocketsDo $ WS.runClientWith host port "/"  WS.defaultConnectionOptions cookie processer
+
+cookie :: [(CI BS.ByteString, BS.ByteString)]
+cookie = [("Cookie", "id=0000-0000-0000-websocket-tester")]
+
+processer :: WS.ClientApp ()
+processer connection = do
+    -- initialize with "example_calculator" spec
+    WS.sendTextData connection (JSON.pack $ ConnectionSetup ["example_calculator"])
+    putStrLn "Initialized..."
+
+    _ <- forkIO $ forever $ listener connection
+    speaker connection
+
 
 
 listener :: WS.ClientApp ()
 listener connection = forever $ do
     msg <- WS.receiveData connection :: IO BS.ByteString
-    putStrLn "Received message"
+    putStrLn "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<"
+    putStrLn "---------- FULL MESSAGE"
     print msg
+
+    if msg == "pong"
+    then putStrLn "---------- RECEIVED \"pong\"" >> putStrLn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
+    else do
+      putStrLn "---------- FULL MESSAGE (HEX)"
+      putStrLn $ unwords $ map (`showHex` "") (BS.unpack msg)
+
+      case MP.unpack msg :: (Maybe WSMessage) of
+        Just msgUnpacked -> do
+            putStrLn "---------- TAG"
+            print $ wsTag msgUnpacked
+            putStrLn "---------- MESSAGE"
+            print $ wsMessage msgUnpacked
+            putStrLn "---------- MESSAGE (HEX)"
+            putStrLn $ unwords $ map (`showHex` "") (BS.unpack $ wsMessage msgUnpacked)
+            putStrLn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>\n"
+
+        Nothing -> do
+            putStrLn "ERROR: could not unpack WSMessage"
+            putStrLn ">>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>>"
 
 speaker :: WS.ClientApp ()
 speaker connection = forever $ do
-    tell <- getLine
-    let tData = TesterData (fromString tell :: BS.ByteString)
-    msg <- runMQMonad $ createMessage "" "mq_websocket_tester" notExpires tData
+    WS.sendTextData connection ("ping" :: BS.ByteString)
+    putStrLn "Enter first number: "
+    num1 <- read <$> getLine
+    putStrLn "Enter second number: "
+    num2 <- read <$> getLine
+    putStrLn "Enter operation: "
+    operation <- getLine
+    let cConfig = CalculatorConfig num1 num2 operation
+    print cConfig
+    msg <- runMQMonad $ createMessage emptyHash "0000-0000-0000-websocket-tester" notExpires cConfig
     let tag = messageTag msg
-    let wsMsg = WSMessage tag (toStrict $ MP.pack msg)
+    let wsMsg = WSMessage tag (MP.pack msg)
     let packedMessage = MP.pack wsMsg
     WS.sendTextData connection packedMessage
 
