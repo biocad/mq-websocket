@@ -29,7 +29,7 @@ import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
 import qualified Network.WebSockets            as WS
 import           System.MQ.Protocol            (Dictionary (..), MessageTag,
-                                                Spec)
+                                                Spec, MessageType)
 
 -- | Name for the application
 websocketName :: String
@@ -66,16 +66,43 @@ type Specs = Map Spec [ClientConnection]
 
 -- | WebSocket connection wrapper type.
 -- Creation time is used as an identifier which helps to distinguish connections.
-data WSConnection = WSConnection { wsTime         :: Timestamp     -- ^ Connection creation time. Acts as identifier.
-                                 , wsConnection   :: WS.Connection -- ^ Connection itself
-                                 , wsAcceptedSpec :: [Spec]        -- ^ Specs which creator of the connection accepts.
-                                 }
+data WSConnection = WSConnection {-# UNPACK #-} !Timestamp     -- ^ Connection creation time. Acts as identifier.
+                                 {-# UNPACK #-} !ClientId      -- ^ Client identificator
+                                 {-# UNPACK #-} !WS.Connection -- ^ Connection itself
+                                 
 
 instance Eq WSConnection where
-  wsConn1 == wsConn2 = wsTime wsConn1 == wsTime wsConn2
+  (WSConnection t1 _ _) == (WSConnection t2 _ _) = t1 == t2
 
 instance Ord WSConnection where
-  wsConn1 <= wsConn2 = wsTime wsConn1 <= wsTime wsConn2
+  (WSConnection t1 _ _) <= (WSConnection t2 _ _) = t1 <= t2
+
+-- -- | 'MessageType' describes valid message types in Monique with additional .
+-- --
+-- data MessageType = Config | Result | Error | Data | AnyType
+--   deriving (Eq, Generic)
+
+-- instance Show MessageType where
+--   show Config  = "config"
+--   show Result  = "result"
+--   show Error   = "error"
+--   show Data    = "data"
+--   show AnyType = "*"
+
+-- instance Read MessageType where
+--   readsPrec _ "config" = [(Config, "")]
+--   readsPrec _ "result" = [(Result, "")]
+--   readsPrec _ "error"  = [(Error, "")]
+--   readsPrec _ "data"   = [(Data, "")]
+--   readsPrec _ "*"      = [(AnyType, "")]
+--   readsPrec _ _        = []
+
+-- | Subscription is 
+data Subscription = Subscription {-# UNPACK #-} Spec
+                                 {-# UNPACK #-} MessageType
+
+
+
 
 newtype ConnectionSetup = ConnectionSetup { specs :: [String] }
   deriving (Generic, Show)
