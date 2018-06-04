@@ -3,11 +3,13 @@ module System.MQ.WebSocket.Connection.Functions
     packConnection
   -- , clientsCountM
   -- , clientExistsM
-  , addConnection
-  , removeConnection
+  , subscribeConnection
+  , unsubscribeConnection
+  , closeConnection
   -- , removeConnectionM
   -- , allConnectionsM
   , sharedSubs
+  , getTimeNano
   ) where
 
 import           Control.Concurrent.STM.TVar          (TVar, modifyTVar',
@@ -78,8 +80,8 @@ packConnection clientId connection = do
 --     foldFunc :: SubsMap -> Subscription -> SubsMap
 --     foldFunc subsMap subscription = insertWith union subscription [wsConnection] subsMap
 
-addConnection :: MonadIO m => WSConnection -> [Subscription] -> m ()
-addConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sharedSubs addSubs
+subscribeConnection :: MonadIO m => WSConnection -> [Subscription] -> m ()
+subscribeConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sharedSubs addSubs
   where
     addSubs :: SubsMap -> SubsMap
     addSubs oldSubs = foldl foldFunc oldSubs subscriptions
@@ -105,14 +107,23 @@ addConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sha
 --     searchAndRemove :: [ClientConnection] -> [ClientConnection]
 --     searchAndRemove = filter (/= clientConn)
 
-removeConnection :: MonadIO m => WSConnection -> m ()
-removeConnection wsConnection = liftIO . atomically $ modifyTVar' sharedSubs removeSubs
+unsubscribeConnection :: MonadIO m => WSConnection -> [Subscription] -> m ()
+unsubscribeConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sharedSubs cleanSubs
+  where
+    cleanSubs :: SubsMap -> SubsMap
+    cleanSubs oldSubs = foldl foldFunc oldSubs subscriptions
+
+    searchAndRemove :: [WSConnection] -> Maybe [WSConnection]
+    searchAndRemove wsConnections = Just $ filter (/= wsConnection) wsConnections
+                                             
+    foldFunc :: SubsMap -> Subscription -> SubsMap
+    foldFunc subsMap subscription = update searchAndRemove subscription subsMap
+
+closeConnection :: MonadIO m => WSConnection -> m ()
+closeConnection wsConnection = liftIO . atomically $ modifyTVar' sharedSubs removeSubs
   where
     removeSubs :: SubsMap -> SubsMap
     removeSubs = fmap (filter (/= wsConnection))
-
-    -- searchAndRemove :: [WSConnection] -> [WSConnection]
-    -- searchAndRemove  = filter (/= wsConnection)
 
 {-
 -- | Pure and lifted versions of obtaining all WebSocket connections.

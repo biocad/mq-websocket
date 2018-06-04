@@ -22,8 +22,7 @@ import           System.MQ.Protocol             (MessageLike (..),
                                                  createMessage, emptyHash,
                                                  jsonEncoding, messageTag,
                                                  notExpires)
-import           System.MQ.WebSocket            (ConnectionSetup (..),
-                                                 WSMessage (..))
+import           System.MQ.WebSocket.Protocol   (WSData (..), WSMessage (..))
 
 -- | 'CalculatorConfig' represents configuration data for calculator.
 --
@@ -54,7 +53,7 @@ cookie = [("Cookie", "id=0000-0000-0000-websocket-tester")]
 processer :: WS.ClientApp ()
 processer connection = do
     -- initialize with "example_calculator" spec
-    WS.sendTextData connection (JSON.pack $ ConnectionSetup ["example_calculator"])
+    WS.sendTextData connection $ ("asdasd" :: BS.ByteString) --MP.pack $ WSPong 123 --  (JSON.pack $ ConnectionSetup ["example_calculator"])
     putStrLn "Initialized..."
 
     _ <- forkIO $ forever $ listener connection

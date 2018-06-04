@@ -27,6 +27,16 @@ instance MessagePack WSMessage where
   toObject = toObject . toDictionary
   fromObject = fromObject >=> fromDictionary
 
+instance Dictionary WSError where
+  toDictionary WSError{..} = fromList [ ("error", toObject wsError) ]
+  fromDictionary dict = do
+    wsError     <- dict .! "error"
+    pure WSError{..}
+
+instance MessagePack WSError where
+  toObject = toObject . toDictionary
+  fromObject = fromObject >=> fromDictionary
+
 instance Dictionary Subscription where
   toDictionary Subscription{..} = fromList [ ("spec", toObject subSpec)
                                            , ("type", toObject subType)

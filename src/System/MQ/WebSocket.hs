@@ -3,6 +3,7 @@
 module System.MQ.WebSocket
   (
     runWebSocket
+  , getTimeNano
   , websocketName
   ) where
 
@@ -13,7 +14,7 @@ import qualified Network.WebSockets             as WS
 import           System.BCD.Config              (getConfigText)
 import           System.MQ.Component            (Env)
 import           System.MQ.Monad                (MQMonad)
-import           System.MQ.WebSocket.Connection (websocketName)
+import           System.MQ.WebSocket.Connection (getTimeNano, websocketName)
 import           System.MQ.WebSocket.FromMQ     (listenMonique)
 import           System.MQ.WebSocket.FromWS     (listenWebSocket)
 

@@ -5,6 +5,7 @@ module System.MQ.WebSocket.Protocol.Types
     Timestamp
   , Subscription (..)
   , WSMessage (..)
+  , WSError (..)
   , WSData (..)
   , CommandLike (..)
   , wildcard
@@ -48,8 +49,11 @@ data WSData = WSPing         Timestamp
             | WSUnsubscribe  [Subscription]
             | WSUnsubscribed [Subscription]
             | WSPushToMQ     WSMessage
-            | WSPushedToMQ   WSMessage
+            | WSPushedToMQ   MessageTag
             | WSPushedFromMQ WSMessage
+  deriving (Eq, Ord, Show)
+
+newtype WSError = WSError { wsError :: Text }
   deriving (Eq, Ord, Show)
 
 -- | Tiny helpful class to marks messages with the command.
