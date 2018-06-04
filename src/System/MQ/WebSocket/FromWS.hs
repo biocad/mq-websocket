@@ -8,29 +8,28 @@ module System.MQ.WebSocket.FromWS
 
 import           Control.Exception              (finally)
 import           Control.Monad.IO.Class         (liftIO)
-import Data.Text as T (Text, unpack)
-import           Data.Aeson                     (eitherDecode)
-import Data.ByteString (ByteString)
 import qualified Data.ByteString.Lazy           as BSL (ByteString, toStrict)
 import           Data.List                      (find)
 import           Data.Maybe                     (maybe)
--- import           Data.MessagePack               (unpack)
-import           Data.String                    (fromString)
+import           Data.MessagePack               (MessagePack (..))
+import           Data.Text                      as T (Text, unpack)
 import qualified Network.WebSockets             as WS
 import           System.Log.Logger              (errorM, infoM)
 import           System.MQ.Component            (TwoChannels (..),
                                                  load2Channels)
 import qualified System.MQ.Encoding.MessagePack as MP (pack, unpack)
-import Data.MessagePack (MessagePack (..))
 import           System.MQ.Monad                (MQMonad, foreverSafe,
                                                  runMQMonad)
+import           System.MQ.Transport            (PushChannel)
 import           System.MQ.Transport.ByteString (push)
-import           System.MQ.Transport (PushChannel)
-import           System.MQ.WebSocket.Connection (ClientId, WSConnection (..), closeConnection,
+import           System.MQ.WebSocket.Connection (ClientId, WSConnection (..),
+                                                 closeConnection,
                                                  packConnection,
-                                                 unsubscribeConnection,subscribeConnection,
+                                                 subscribeConnection,
+                                                 unsubscribeConnection,
                                                  websocketName)
-import           System.MQ.WebSocket.Protocol   (WSData (..), WSMessage (..), WSError (..))
+import           System.MQ.WebSocket.Protocol   (WSData (..), WSError (..),
+                                                 WSMessage (..))
 import           Web.Cookie                     (parseCookiesText)
 
 -- | WebSocket listener function.
@@ -54,7 +53,7 @@ listenWebSocket pending = maybe (rejectConnection pending) (acceptConnection pen
 rejectConnection :: WS.PendingConnection -> IO ()
 rejectConnection pending = do
     errorM websocketName "user id not found in cookies."
-    WS.rejectRequest pending $ MP.pack $ WSError "user id not found in cookies."
+    WS.rejectRequest pending . MP.pack $ WSError "user id not found in cookies."
 
 -- | Function that accepts a pending connection from new client.
 --
@@ -62,7 +61,7 @@ acceptConnection :: WS.PendingConnection -> ClientId -> IO ()
 acceptConnection pending clientId = do
     connection <- WS.acceptRequest pending
     WS.forkPingThread connection 30
-    infoM websocketName $ "New connection established for the clientID: " ++ T.unpack clientId
+    infoM websocketName $ "new connection established for the clientID: " ++ T.unpack clientId
     wsConnection <- packConnection clientId connection
 
     finally (dispatchClientMessage wsConnection) (closeConnection wsConnection)
@@ -76,9 +75,8 @@ dispatchClientMessage wsConnection@(WSConnection _ _ connection) = runMQMonad $ 
     TwoChannels{..} <- load2Channels
     foreverSafe websocketName $ do
         packedMessage <- liftIO $ WS.receiveData connection :: MQMonad BSL.ByteString
-        let m = MP.unpack $ BSL.toStrict packedMessage :: Maybe WSData
-        liftIO $ print m
-        maybe (rejectMessage "unknown message") (dispatchMessage toScheduler) m
+        let unpackedMessage = MP.unpack $ BSL.toStrict packedMessage :: Maybe WSData
+        maybe (rejectMessage "unknown message") (dispatchMessage toScheduler) unpackedMessage
 
   where
     rejectMessage :: Text -> MQMonad ()
@@ -88,7 +86,7 @@ dispatchClientMessage wsConnection@(WSConnection _ _ connection) = runMQMonad $ 
 
     sendReply :: MessagePack a => a -> MQMonad ()
     sendReply = liftIO . WS.sendBinaryData connection . MP.pack
-    
+
     -- | PROTOCOL REALIZATION
     --
     dispatchMessage :: PushChannel -> WSData ->  MQMonad ()

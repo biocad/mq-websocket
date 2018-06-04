@@ -17,6 +17,7 @@ import           System.MQ.Protocol (MessageTag)
 
 -- | Current timestamp in nanoseconds. Nanoseconds are used to decrease probability
 -- that different connections will have the same identifier.
+--
 type Timestamp = Int
 
 -- | This symbol is used to mark "any" @type@s or @spec@s.
@@ -25,7 +26,7 @@ wildcard :: Text
 wildcard = "*"
 
 -- | Describes which messages with @spec@ and @type@ are interested for the current connection.
--- To get all @spec@s wildcard symbol ("*") is used.
+-- To get all @spec@s wildcard symbol is used.
 -- To get all @type@s the same symbol is used.
 --
 data Subscription = Subscription { subSpec :: Text -- ^ str; subscription specification
@@ -53,7 +54,10 @@ data WSData = WSPing         Timestamp
             | WSPushedFromMQ WSMessage
   deriving (Eq, Ord, Show)
 
-newtype WSError = WSError { wsError :: Text }
+-- | Describes error in websocket protocol.
+-- 
+newtype WSError = WSError { wsError :: Text -- ^ str; error description
+                          }
   deriving (Eq, Ord, Show)
 
 -- | Tiny helpful class to marks messages with the command.

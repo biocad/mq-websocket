@@ -1,5 +1,5 @@
 name:                mq-websocket
-version:             0.1.1.1
+version:             0.1.2.0
 synopsis:            Package with monique websocket component
 description:
   The package covers:
@@ -18,8 +18,8 @@ cabal-version:       >=1.10
 
 library
   hs-source-dirs:      src
-  exposed-modules:     System.MQ.WebSocket.Protocol
-                     , System.MQ.WebSocket
+  exposed-modules:     System.MQ.WebSocket
+                     , System.MQ.WebSocket.Protocol
   other-modules:       
                        System.MQ.WebSocket.Protocol.Types
                      , System.MQ.WebSocket.Protocol.Instances
@@ -30,6 +30,7 @@ library
 
                      , System.MQ.WebSocket.FromMQ
                      , System.MQ.WebSocket.FromWS
+                     
   build-depends:       base >= 4.7 && < 5
                      , aeson
                      , aeson-picker

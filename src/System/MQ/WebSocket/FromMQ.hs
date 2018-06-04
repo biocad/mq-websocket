@@ -1,5 +1,4 @@
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE RecordWildCards   #-}
+{-# LANGUAGE RecordWildCards #-}
 
 module System.MQ.WebSocket.FromMQ
   (
@@ -11,20 +10,20 @@ import           Control.Monad.Except           (liftIO)
 import qualified Data.ByteString                as BS (ByteString)
 import           Data.Map.Strict                ((!?))
 import           Data.Maybe                     (fromMaybe)
+import qualified Data.Text                      as T (pack)
 import           Network.WebSockets             (ClientApp)
 import qualified Network.WebSockets             as WS (Connection, sendTextData)
 import           System.MQ.Component            (TwoChannels (..),
                                                  load2Channels)
 import           System.MQ.Encoding.MessagePack (pack, unpackM)
 import           System.MQ.Monad                (foreverSafe, runMQMonad)
-import           System.MQ.Protocol             (MessageTag, messageSpec, messageType)
+import           System.MQ.Protocol             (MessageTag, messageSpec,
+                                                 messageType)
 import           System.MQ.Transport.ByteString (sub)
-import qualified Data.Text as T (pack)
 import           System.MQ.WebSocket.Connection (SubsMap, WSConnection (..),
                                                  sharedSubs, websocketName)
-import           System.MQ.WebSocket.Protocol   (Subscription (..),
-                                                 WSMessage (..),
-                                                 WSData (..), wildcard)
+import           System.MQ.WebSocket.Protocol   (Subscription (..), WSData (..),
+                                                 WSMessage (..), wildcard)
 
 -- | Listen to Monique and translate all messages from queue to WebSocket connections
 -- that are subscribed to these kind of messages.
@@ -36,11 +35,12 @@ listenMonique = runMQMonad $ do
         tm@(tag, _) <- sub fromScheduler
         -- received tag in MessagePack, thus it should be unpack to normal bytestring
         tagUnpacked <- unpackM tag
-        let mSpec = T.pack . messageSpec        $ tagUnpacked
-        let mType = T.pack . show . messageType $ tagUnpacked
-
-        subsMap       <- liftIO $ readTVarIO sharedSubs
-
+        let mSpec   = T.pack . messageSpec        $ tagUnpacked
+        let mType   = T.pack . show . messageType $ tagUnpacked
+        -- load map with subscribers
+        subsMap     <- liftIO $ readTVarIO sharedSubs
+        -- collect connections that subscribed to this spec and type;
+        -- do not forget about connections with wildcard
         let connections = getConnections subsMap (Subscription mSpec mType)    ++
                           getConnections subsMap (Subscription mSpec wildcard) ++
                           getConnections subsMap (Subscription wildcard mType) ++

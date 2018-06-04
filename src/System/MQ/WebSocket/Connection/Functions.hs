@@ -1,24 +1,19 @@
 module System.MQ.WebSocket.Connection.Functions
   (
     packConnection
-  -- , clientsCountM
-  -- , clientExistsM
   , subscribeConnection
   , unsubscribeConnection
   , closeConnection
-  -- , removeConnectionM
-  -- , allConnectionsM
   , sharedSubs
   , getTimeNano
   ) where
 
 import           Control.Concurrent.STM.TVar          (TVar, modifyTVar',
-                                                       newTVarIO, readTVarIO)
+                                                       newTVarIO)
 import           Control.Monad.IO.Class               (MonadIO (..))
 import           Control.Monad.STM                    (atomically)
 import           Data.List                            (union)
 import           Data.Map.Strict                      (empty, insertWith,
-                                                       member, size, toList,
                                                        update)
 import qualified Network.WebSockets                   as WS
 import           System.Clock                         (Clock (..), getTime,
@@ -43,43 +38,8 @@ packConnection clientId connection = do
     now <- getTimeNano
     pure $ WSConnection now clientId connection
 
--- packConnectionWithSpec :: MonadIO m => WS.Connection -> [Spec] -> m WSConnection
--- packConnectionWithSpec connection specs = WSConnection <$> getTimeNano <*> pure connection <*> pure specs
-
-
--- -- | Pure and lifted versions of clients count check.
--- -- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
--- --
--- clientsCount :: Clients -> Int
--- clientsCount = size
-
--- clientsCountM :: MonadIO m => m Int
--- clientsCountM = liftIO $ clientsCount <$> readTVarIO sharedClients
-
-
--- -- | Pure and lifted versions of client existance check.
--- -- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
--- --
--- clientExists :: ClientId -> Clients -> Bool
--- clientExists = member
-
--- clientExistsM :: MonadIO m => ClientId -> m Bool
--- clientExistsM clientId = liftIO $ clientExists clientId <$> readTVarIO sharedClients
-
-
--- | Pure and lifted versions of connection addition.
--- Adds connection both to @sgaredClienys@ and @sharedSpecs@.
--- Lifted version uses shared `TVar` pointers to obtain all connected clients and their spec lists.
+-- | Subscribes 'WSConnection' to 'Subscription's.
 --
--- addConnection :: ClientConnection -> Clients -> Clients
--- addConnection (clientId, connection) = insertWith union clientId [connection]
-
--- addSubs :: WSConnection -> [Subscription] -> SubsMap -> SubsMap
--- addSubs wsConnection subscriptions oldSubs = foldl foldFunc oldSubs subscriptions
---   where
---     foldFunc :: SubsMap -> Subscription -> SubsMap
---     foldFunc subsMap subscription = insertWith union subscription [wsConnection] subsMap
-
 subscribeConnection :: MonadIO m => WSConnection -> [Subscription] -> m ()
 subscribeConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sharedSubs addSubs
   where
@@ -89,52 +49,27 @@ subscribeConnection wsConnection subscriptions = liftIO . atomically $ modifyTVa
     foldFunc :: SubsMap -> Subscription -> SubsMap
     foldFunc subsMap subscription = insertWith union subscription [wsConnection] subsMap
 
-
-
--- -- | Pure and lifted versions of connection removal.
--- -- Removes connection both from @sharedClients@ and @sharedSpecs@
--- -- Lifted version uses shared `TVar` pointers to obtain all connected clients and their spec lists.
--- --
--- removeConnection :: ClientConnection -> Clients -> Clients
--- removeConnection (clientId, connection) = update searchAndRemove clientId
---   where
---     searchAndRemove :: [WSConnection] -> Maybe [WSConnection]
---     searchAndRemove connections = Just $ filter (/= connection) connections
-
--- removeSpec :: ClientConnection -> Specs -> Specs
--- removeSpec clientConn = fmap searchAndRemove
---   where
---     searchAndRemove :: [ClientConnection] -> [ClientConnection]
---     searchAndRemove = filter (/= clientConn)
-
+-- | Unsubscribe 'WSConnection' from 'Subscription's.
+--
 unsubscribeConnection :: MonadIO m => WSConnection -> [Subscription] -> m ()
 unsubscribeConnection wsConnection subscriptions = liftIO . atomically $ modifyTVar' sharedSubs cleanSubs
   where
     cleanSubs :: SubsMap -> SubsMap
     cleanSubs oldSubs = foldl foldFunc oldSubs subscriptions
 
-    searchAndRemove :: [WSConnection] -> Maybe [WSConnection]
-    searchAndRemove wsConnections = Just $ filter (/= wsConnection) wsConnections
-                                             
     foldFunc :: SubsMap -> Subscription -> SubsMap
     foldFunc subsMap subscription = update searchAndRemove subscription subsMap
 
+    searchAndRemove :: [WSConnection] -> Maybe [WSConnection]
+    searchAndRemove wsConnections = Just $ filter (/= wsConnection) wsConnections
+
+-- | Closes 'WSConnection', which is equally to remove all subscribtions for this connection.
+--
 closeConnection :: MonadIO m => WSConnection -> m ()
 closeConnection wsConnection = liftIO . atomically $ modifyTVar' sharedSubs removeSubs
   where
     removeSubs :: SubsMap -> SubsMap
     removeSubs = fmap (filter (/= wsConnection))
-
-{-
--- | Pure and lifted versions of obtaining all WebSocket connections.
--- Lifted version uses @sharedClients@ `TVar` to obtain all connected clients.
---
-allConnections :: Clients -> [WS.Connection]
-allConnections = concatMap (fmap wsConnection) . fmap snd . toList
-
-allConnectionsM :: MonadIO m => m [WS.Connection]
-allConnectionsM = liftIO $ allConnections <$> readTVarIO sharedClients
---}
 
 -- | Get current Epoch time in nanoseconds.
 --
