@@ -114,6 +114,8 @@ speaker connection = forever $ do
             sendToServer $ WSPing now
         ["subscribe", spec', type'] -> do
             sendToServer $ WSSubscribe [Subscription (T.pack spec') (T.pack type')]
+        ["unsubscribe", spec', type'] -> do
+            sendToServer $ WSUnsubscribe [Subscription (T.pack spec') (T.pack type')]
         ["push", spec', read -> type', encoding', path] -> do
             dataBS <- liftIO $ BS.readFile path
             msg@Message{..} <- runMQMonad $ createMessageBS emptyHash "0000-0000-0000-websocket-tester" notExpires spec' encoding' type' dataBS
