@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.2.0] - 2018-06-04
+### Changed
+- Protocol for websocket updated.
+
 ## [0.1.1.1] - 2018-05-25
 ### Changed
 - Version up due to `mq` library update.

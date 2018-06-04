@@ -87,7 +87,7 @@ speaker connection = do
             sendToServer $ WSPing now
         ["pong"] -> do
             now <- getTimeNano
-            sendToServer $ WSPing now
+            sendToServer $ WSPong now
         ["subscribe", spec', type'] ->
             sendToServer $ WSSubscribe [Subscription (T.pack spec') (T.pack type')]
         ["unsubscribe", spec', type'] ->
