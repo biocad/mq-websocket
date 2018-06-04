@@ -2,24 +2,20 @@
 
 module System.MQ.WebSocket
   (
-    WSMessage (..)
-  , ConnectionSetup (..)
-  , runWebSocket
+    runWebSocket
   , websocketName
   ) where
 
-import           Control.Concurrent               (forkIO)
-import           Control.Monad.IO.Class           (liftIO)
-import           Data.Aeson.Picker                ((|--))
-import qualified Network.WebSockets               as WS
-import           System.BCD.Config                (getConfigText)
-import           System.MQ.Component              (Env)
-import           System.MQ.Monad                  (MQMonad)
-import           System.MQ.WebSocket.Atomic.Types (ConnectionSetup (..),
-                                                   WSMessage (..),
-                                                   websocketName)
-import           System.MQ.WebSocket.FromMQ       (listenMonique)
-import           System.MQ.WebSocket.FromWS       (listenWebSocket)
+import           Control.Concurrent             (forkIO)
+import           Control.Monad.IO.Class         (liftIO)
+import           Data.Aeson.Picker              ((|--))
+import qualified Network.WebSockets             as WS
+import           System.BCD.Config              (getConfigText)
+import           System.MQ.Component            (Env)
+import           System.MQ.Monad                (MQMonad)
+import           System.MQ.WebSocket.Connection (websocketName)
+import           System.MQ.WebSocket.FromMQ     (listenMonique)
+import           System.MQ.WebSocket.FromWS     (listenWebSocket)
 
 runWebSocket :: Env -> MQMonad ()
 runWebSocket _ = liftIO $ do

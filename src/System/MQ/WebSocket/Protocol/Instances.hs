@@ -1,26 +1,18 @@
-{-# LANGUAGE RecordWildCards #-}
+{-# LANGUAGE OverloadedStrings   #-}
+{-# LANGUAGE RecordWildCards     #-}
 {-# LANGUAGE ScopedTypeVariables #-}
-{-# LANGUAGE OverloadedStrings #-}
-{-# LANGUAGE ViewPatterns #-}
+{-# LANGUAGE ViewPatterns        #-}
+{-# OPTIONS_GHC -fno-warn-orphans #-}
 
-module System.MQ.WebSocket.Protocol.Instances where
+module System.MQ.WebSocket.Protocol.Instances () where
 
-import System.MQ.WebSocket.Protocol.Types
-import           Control.Monad                 ((>=>))
-import           Data.Aeson                    (FromJSON (..), ToJSON (..))
-import           Data.ByteString               (ByteString)
-import qualified Data.ByteString.Lazy          as BSL (ByteString)
-import           Data.Map.Strict               (Map, fromList, member, (!))
-import           Data.MessagePack.Types.Class  (MessagePack (..))
-import           Data.MessagePack.Types.Object (Object)
-import           Data.Text                     (Text, unpack)
-import           GHC.Generics                  (Generic)
-import qualified Network.WebSockets            as WS
-import           System.MQ.Protocol            (Dictionary (..), MessageTag,
-                                                Spec, MessageType)
-
-
-
+import           Control.Monad                      ((>=>))
+import           Data.Map.Strict                    (Map, fromList, member, (!))
+import           Data.MessagePack.Types.Class       (MessagePack (..))
+import           Data.MessagePack.Types.Object      (Object)
+import           Data.Text                          (Text, unpack)
+import           System.MQ.Protocol                 (Dictionary (..))
+import           System.MQ.WebSocket.Protocol.Types
 
 instance Dictionary WSMessage where
   toDictionary WSMessage{..} = fromList [ ("tag", toObject wsTag)
@@ -70,11 +62,11 @@ instance Dictionary WSData where
   toDictionary x@(WSPushToMQ y)     = prepare x y
   toDictionary x@(WSPushedToMQ y)   = prepare x y
   toDictionary x@(WSPushedFromMQ y) = prepare x y
-      
-      
+
+
   fromDictionary dict = do
-    command :: Text <- dict .! "command"
-    case command of
+    command' :: Text <- dict .! "command"
+    case command' of
         "ping"           -> WSPing         <$> dict .! "data"
         "pong"           -> WSPong         <$> dict .! "data"
         "subscribe"      -> WSSubscribe    <$> dict .! "data"
@@ -93,9 +85,6 @@ prepare (command -> x) y = fromList [ ("command", toObject x), ("data", toObject
 instance MessagePack WSData where
   toObject = toObject . toDictionary
   fromObject = fromObject >=> fromDictionary
-
-
-
 
 
 
