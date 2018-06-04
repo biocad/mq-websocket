@@ -11,7 +11,8 @@ import           Data.Text                     (Text)
 import           GHC.Generics                  (Generic)
 import qualified Network.WebSockets            as WS
 import           System.MQ.Protocol            (Dictionary (..), MessageTag,
-                                                Spec, MessageType)
+                                                MessageType, Spec)
+
 -- | Current timestamp in nanoseconds. Nanoseconds are used to decrease probability
 -- that different connections will have the same identifier.
 type Timestamp = Int
@@ -19,7 +20,7 @@ type Timestamp = Int
 -- | Describes which messages with @spec@ and @type@ are interested for the current connection.
 -- To get all @spec@s wildcard symbol ("*") is used.
 -- To get all @type@s the same symbol is used.
--- 
+--
 data Subscription = Subscription { subSpec :: Text -- ^ str; subscription specification
                                  , subType :: Text -- ^ str; subscription type
                                  }
