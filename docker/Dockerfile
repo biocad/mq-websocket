@@ -14,7 +14,7 @@ RUN ln -snf /usr/share/zoneinfo/$TZ /etc/localtime && echo $TZ > /etc/timezone
 RUN ldconfig
 
 # Copy app
-COPY websocket /workdir/
+COPY mq-websocket /workdir/
 COPY config.json /workdir/
 
 WORKDIR /workdir
