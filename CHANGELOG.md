@@ -6,6 +6,10 @@ and this project adheres to [Semantic Versioning](http://semver.org/spec/v2.0.0.
 
 ## [Unreleased]
 
+## [0.1.2.2] - 2018-06-06
+### Changed
+- Update for docker file again.
+
 ## [0.1.2.1] - 2018-06-05
 ### Changed
 - Update for docker file.

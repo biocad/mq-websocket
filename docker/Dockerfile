@@ -22,4 +22,4 @@ WORKDIR /workdir
 # Defaults. Can be set as: docker run .. -e "config=config.json", etc.
 ENV config "config.json"
 
-ENTRYPOINT /workdir/websocket -f ${config}
+ENTRYPOINT /workdir/mq-websocket -f ${config}
