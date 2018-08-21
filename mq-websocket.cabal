@@ -1,5 +1,5 @@
 name:                mq-websocket
-version:             0.1.2.2
+version:             0.1.2.3
 synopsis:            Package with monique websocket component
 description:
   The package covers:
