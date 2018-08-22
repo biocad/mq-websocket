@@ -108,7 +108,7 @@ dispatchClientMessage wsConnection@(WSConnection _ _ connection) = runMQMonad $ 
     dispatchMessage _ (WSUnsubscribed _) = rejectMessage "<unsubscribed> message could not be sent from the client"
     -- if 'WSPushToMQ' received, then get tag and message and push it to MoniQue
     dispatchMessage toScheduler' (WSPushToMQ WSMessage {..}) = do
-        push toScheduler' (MP.pack wsTag, wsMessage)
+        push toScheduler' (wsTag, wsMessage)
         sendReply $ WSPushedToMQ wsTag
     -- 'WSPushedToMQ' could not be sent by the client
     dispatchMessage _ (WSPushedToMQ _) = rejectMessage "<pushed_to_mq> message could not be sent from the client"

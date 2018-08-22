@@ -8,7 +8,6 @@ import           Control.Concurrent             (forkIO)
 import           Control.Monad                  (forever)
 import           Control.Monad.IO.Class         (liftIO)
 import           Data.Aeson.Picker              ((|--))
-import           Data.ByteString                (ByteString)
 import qualified Data.ByteString                as BS
 import           Data.CaseInsensitive           (CI (..))
 import           Data.MessagePack               (MessagePack (..))
@@ -20,7 +19,7 @@ import           System.BCD.Config              (getConfigText)
 import qualified System.MQ.Encoding.MessagePack as MP (pack, unpack)
 import           System.MQ.Monad                (runMQMonad)
 import           System.MQ.Protocol             (Message (..), createMessageBS,
-                                                 emptyHash, messageTag,
+                                                 emptyId, messageTag,
                                                  notExpires)
 import           System.MQ.WebSocket            (getTimeNano)
 import           System.MQ.WebSocket.Protocol   (CommandLike (..),
@@ -62,7 +61,7 @@ listener connection = forever $ do
             putStrLn "\nCOMMAND"
             print $ command msgUnpacked
             putStrLn "\nTAG FROM MQ"
-            print (MP.unpack tag' :: Maybe ByteString)
+            print tag'
             putStrLn "\nMESSAGE FROM MQ (HEX)"
             putStrLn $ unwords $ map (`showHex` "") (BS.unpack msg')
             putStrLn "<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<<\n"
@@ -94,10 +93,10 @@ speaker connection = do
             sendToServer $ WSUnsubscribe [Subscription (T.pack spec') (T.pack type')]
         ["push", spec', read -> type', encoding', path] -> do
             dataBS <- liftIO $ BS.readFile path
-            msg@Message{..} <- runMQMonad $ createMessageBS emptyHash "0000-0000-0000-websocket-tester" notExpires spec' encoding' type' dataBS
+            msg@Message{..} <- runMQMonad $ createMessageBS emptyId "0000-0000-0000-websocket-tester" notExpires (T.pack spec') (T.pack encoding') type' dataBS
             let tag = messageTag msg
             sendToServer . WSPushToMQ . WSMessage tag $ MP.pack msg
-        _        -> help
+        _   -> help
   where
     sendToServer :: MessagePack a => a -> IO ()
     sendToServer = WS.sendBinaryData connection . MP.pack

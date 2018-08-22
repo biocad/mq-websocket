@@ -15,10 +15,11 @@ import           Network.WebSockets             (ClientApp)
 import qualified Network.WebSockets             as WS (Connection, sendTextData)
 import           System.MQ.Component            (TwoChannels (..),
                                                  load2Channels)
-import           System.MQ.Encoding.MessagePack (pack, unpackM)
+import           System.MQ.Encoding.MessagePack (pack)
 import           System.MQ.Monad                (foreverSafe, runMQMonad)
 import           System.MQ.Protocol             (MessageTag, messageSpec,
                                                  messageType)
+import           System.MQ.Transport            (Subscribe (..), allTopics)
 import           System.MQ.Transport.ByteString (sub)
 import           System.MQ.WebSocket.Connection (SubsMap, WSConnection (..),
                                                  sharedSubs, websocketName)
@@ -30,13 +31,15 @@ import           System.MQ.WebSocket.Protocol   (Subscription (..), WSData (..),
 listenMonique :: IO ()
 listenMonique = runMQMonad $ do
     TwoChannels{..} <- load2Channels
+    -- subscribe to every topics
+    subscribeTo fromScheduler allTopics
 
     foreverSafe websocketName $ do
         tm@(tag, _) <- sub fromScheduler
-        -- received tag in MessagePack, thus it should be unpack to normal bytestring
-        tagUnpacked <- unpackM tag
-        let mSpec   = T.pack . messageSpec        $ tagUnpacked
-        let mType   = T.pack . show . messageType $ tagUnpacked
+
+        let mSpec   = messageSpec tag
+        let mType   = T.pack . show . messageType $ tag
+
         -- load map with subscribers
         subsMap     <- liftIO $ readTVarIO sharedSubs
         -- collect connections that subscribed to this spec and type;
